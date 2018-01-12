@@ -1,4 +1,5 @@
 const iconv = require('iconv-lite');
+const moment = require('moment')
 
 const readline = require('readline');
 const fs = require('fs');
@@ -12,8 +13,51 @@ function parseLine(line) {
 function createRowObject(headers, values) {
 	const rowObject = {};
 
-	headers.forEach((value, index) => {
-		rowObject[value] = values[index];
+	headers.forEach((header, index) => {
+		if (typeof header === 'string')
+			rowObject[header] = values[index];
+		else {
+			let val;
+			if (header.map) val = header.map(values[index]);
+			else {
+				try {
+					switch (header.type) {
+						case 'string':
+							val = values[index];
+							if (val && header.pattern && !values[index].match(header.pattern))
+								throw new Error(`[${header.name}] String ${val} doesn\'t match pattern ${header.pattern}`);
+							else if (val) val = val.trim();
+							break;
+						case 'array':
+							const sep = header.sep || ';';
+							val = values[index] && values[index].split(sep);
+							break;
+						case 'date':
+							val = moment(values[index], header.format);
+							break;
+						case 'bool':
+							val = values[index] === 'true';
+							break;
+						case 'float':
+							val = parseFloat(values[index]);
+							break;
+						case 'int':
+							val = parseInt(values[index], 10);
+							break;
+						case 'enum':
+							val = values[index];
+							if (val && header.vals && header.vals.indexOf(val) === -1)
+								throw new Error(`Non matching value ${val} from enum ${header.vals}`)
+							break;
+						default:
+							throw new Error('Unknown type ' + header.type);
+					}
+				} catch (e) {
+					console.error(e);
+				}
+			}
+			rowObject[header.name] = val;
+		}
 	});
 
 	return rowObject;
