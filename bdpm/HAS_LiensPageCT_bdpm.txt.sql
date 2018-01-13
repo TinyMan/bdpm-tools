@@ -7012,7 +7012,6 @@ INSERT INTO HAS_LiensPageCT_bdpm (codeHAS,lienAvisCT) VALUES ('CT-296','http://w
 INSERT INTO HAS_LiensPageCT_bdpm (codeHAS,lienAvisCT) VALUES ('CT-7','http://www.has-sante.fr/portail/jcms/c_399853');
 INSERT INTO HAS_LiensPageCT_bdpm (codeHAS,lienAvisCT) VALUES ('CT-375','http://www.has-sante.fr/portail/jcms/c_399818');
 INSERT INTO HAS_LiensPageCT_bdpm (codeHAS,lienAvisCT) VALUES ('CT-359','http://www.has-sante.fr/portail/jcms/c_399817');
-INSERT INTO HAS_LiensPageCT_bdpm (codeHAS,lienAvisCT) VALUES (NULL,NULL);
 INSERT INTO HAS_LiensPageCT_bdpm (codeHAS,lienAvisCT) VALUES ('CT-213','http://www.has-sante.fr/portail/jcms/c_399816');
 INSERT INTO HAS_LiensPageCT_bdpm (codeHAS,lienAvisCT) VALUES ('CT-376','http://www.has-sante.fr/portail/jcms/c_399815');
 INSERT INTO HAS_LiensPageCT_bdpm (codeHAS,lienAvisCT) VALUES ('CT-274','http://www.has-sante.fr/portail/jcms/c_399814');

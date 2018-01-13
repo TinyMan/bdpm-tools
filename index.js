@@ -2,7 +2,7 @@ const converter = require('./src/converter');
 const path = require('path');
 
 const sqlite = require('sqlite');
-const dbPromise = sqlite.open('./database.sqlite');
+const dbPromise = sqlite.open('./bdpm/bdpm.sqlite');
 
 
 
@@ -18,7 +18,7 @@ const files = {
 			'statutAMM',
 			'typeAMM',
 			'etatCommercialisation',
-			{ name: 'dateAMM', type: 'date', format: 'DD/MM/YYYY' },
+			{ name: 'dateAMM', type: 'date', toFormat: 'DD/MM/YYYY', format: 'DD/MM/YYYY' },
 			'statutBDM',
 			'numAutorisation',
 			{ name: 'titulaires', type: 'array', sep: ';' },
@@ -34,12 +34,12 @@ const files = {
 			'libelle',
 			'statutAdministratif',
 			'etatCommercialisation',
-			{ name: 'dateDeclaration', type: 'date', format: 'DD/MM/YYYY' },
+			{ name: 'dateDeclaration', type: 'date', toFormat: 'DD/MM/YYYY', format: 'DD/MM/YYYY' },
 			{ name: 'cip13', type: 'string', pattern: /^\d{13}$/ },
 			'agrementCollectivites',
 			{ name: 'tauxRemboursement', type: 'array', sep: ';' },
 			{ name: 'prix', type: 'float' },
-			'indicationsRemboursement'
+			{ name: 'indicationsRemboursement', type: 'float' }
 		]
 	},
 	'CIS_COMPO_bdpm': {
@@ -63,7 +63,7 @@ const files = {
 			{ name: 'cis', type: 'string', pattern: /^\d{8}$/ },
 			{ name: 'codeHAS', type: 'string', pattern: /^CT-\d+$/ },
 			'motifEval',
-			{ name: 'dateAvisCT', type: 'date', format: 'YYYYMMDD' },
+			{ name: 'dateAvisCT', type: 'date', toFormat: 'DD/MM/YYYY', format: 'YYYYMMDD' },
 			'valeurSMR',
 			'libelleSMR'
 		]
@@ -75,7 +75,7 @@ const files = {
 			{ name: 'cis', type: 'string', pattern: /^\d{8}$/ },
 			{ name: 'codeHAS', type: 'string', pattern: /^CT-\d+$/ },
 			'motifEval',
-			{ name: 'dateAvisCT', type: 'date', format: 'YYYYMMDD' },
+			{ name: 'dateAvisCT', type: 'date', toFormat: 'DD/MM/YYYY', format: 'YYYYMMDD' },
 			'valeurASMR',
 			'libelleASMR',
 		]
@@ -112,8 +112,8 @@ const files = {
 		description: 'On ajoute la date de génération au nom de ce fichier car, contrairement aux autres fichiers, celui-ci est généré en direct. Il contient l\'ensemble des informations importantes disponibles pour les médicaments de la base de données publique des médicaments. ',
 		headers: [
 			{ name: 'cis', type: 'string', pattern: /^\d{8}$/ },
-			{ name: 'dateDebutInfo', type: 'date', format: 'DD/MM/YYYY' },
-			{ name: 'dateFinInfo', type: 'date', format: 'DD/MM/YYYY' },
+			{ name: 'dateDebutInfo', type: 'date', toFormat: 'DD/MM/YYYY', format: 'DD/MM/YYYY' },
+			{ name: 'dateFinInfo', type: 'date', toFormat: 'DD/MM/YYYY', format: 'DD/MM/YYYY' },
 			'texteHTML'
 		]
 	}
@@ -147,7 +147,7 @@ const creation_script = `
 		dateDeclaration TEXT,
 		agrementCollectivites TEXT,
 		prix FLOAT,
-		indicationsRemboursement TEXT
+		indicationsRemboursement FLOAT
 	);
 	CREATE INDEX CIS_CIP_bdpm_cis ON CIS_CIP_bdpm (cis);
 	CREATE INDEX CIS_CIP_bdpm_cip7 ON CIS_CIP_bdpm (cip7);
@@ -308,7 +308,7 @@ async function main() {
 			console.log(`Loading ${file} ...`);
 			const filename = path.join(__dirname, 'bdpm', file + '.txt');
 			try {
-				const res = await converter(filename, files[file].headers, 'sql', doc => {
+				const res = await converter(filename, files[file].headers, doc => {
 					const vals = [];
 					function mapValue(h) {
 						let v = doc[h];

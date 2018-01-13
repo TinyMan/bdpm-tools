@@ -3,6 +3,8 @@ const moment = require('moment')
 
 const readline = require('readline');
 const fs = require('fs');
+const { promisify } = require('util');
+const writeFile = promisify(fs.writeFile);
 
 
 
@@ -34,12 +36,15 @@ function createRowObject(headers, values) {
 							break;
 						case 'date':
 							val = moment(values[index], header.format);
+							if (header.toFormat)
+								val = val.format(header.toFormat);
 							break;
 						case 'bool':
 							val = values[index] === 'true';
 							break;
 						case 'float':
-							val = parseFloat(values[index]);
+							if (values[index])
+								val = parseFloat(values[index].replace(/,/g, '.'));
 							break;
 						case 'int':
 							val = parseInt(values[index], 10);
@@ -63,36 +68,33 @@ function createRowObject(headers, values) {
 	return rowObject;
 }
 
-module.exports = async function (file_name, headers, format, getRequest) {
+module.exports = async function (file_name, headers, getRequest) {
 	return new Promise((res, rej) => {
 
-		const data = [];
-		if (format === 'sql') data.push('BEGIN TRANSACTION;')
+		const data = ['BEGIN TRANSACTION;'];
+		const json = [];
 		const lineReader = readline.createInterface({
 			input: fs.createReadStream(file_name).pipe(iconv.decodeStream('binary'))
 		});
 
 		lineReader.on('line', function (line) {
 			const doc = createRowObject(headers, parseLine(line));
-			if (format === 'sql')
-				data.push(getRequest(doc));
-			else data.push(doc);
+			data.push(getRequest(doc));
+			json.push(doc);
 		});
 
-		lineReader.on('close', () => {
-			if (format === 'sql') data.push('COMMIT;')
-			if (format === 'json') {
-				fs.writeFile(file_name + '.json', JSON.stringify(data, null, 2), err => {
-					if (err) rej(err)
-					else res(data);
-				});
-			} else if (format === 'sql') {
-				fs.writeFile(file_name + '.sql', data.join('\n'), err => {
-					if (err) rej(err);
-					else res(data.join('\n'));
-				})
-			} else {
-				res(data)
+		lineReader.on('close', async () => {
+			try {
+				data.push('COMMIT;')
+				const sql = data.join('\n');
+				// await Promise.all(
+				fs.writeFileSync(file_name + '.json', JSON.stringify(json, null, 2));
+				fs.writeFileSync(file_name + '.sql', sql)
+				// )
+				res(sql)
+
+			} catch (e) {
+				rej(e);
 			}
 		});
 		lineReader.on('error', e => rej(e));
