@@ -9,8 +9,9 @@ const writefile = promisify(fs.writeFile)
 const mkdir = promisify(fs.mkdir);
 
 const bdpm_folder = 'bdpm';
-const dbPromise = sqlite.open(`./${bdpm_folder}/bdpm.sqlite`);
-const creation_sql_file = path.join(bdpm_folder, 'bdpm.sql');
+const dbPath = path.join(__dirname, bdpm_folder, 'bdpm.sqlite')
+const dbPromise = sqlite.open(dbPath);
+const creation_sql_file = path.join(__dirname, bdpm_folder, 'bdpm.sql');
 
 const files = {
 	'CIS_bdpm': {
@@ -375,7 +376,7 @@ async function main() {
 		const sql = creation_script + '\n' + (await Promise.all(p)).join('\n');
 		await writefile(creation_sql_file, sql);
 
-		console.log(`Creating database ...`)
+		console.log(`Creating database in ${dbPath}...`)
 		const db = await dbPromise;
 		await db.exec(sql);
 	} catch (e) {
