@@ -2,8 +2,10 @@ const converter = require('./src/converter');
 const path = require('path');
 
 const sqlite = require('sqlite');
-const dbPromise = sqlite.open('./bdpm/bdpm.sqlite');
+const writefile = require('util').promisify(require('fs').writeFile)
 
+const dbPromise = sqlite.open('./bdpm/bdpm.sqlite');
+const creation_sql_file = path.join('bdpm', 'bdpm.sql');
 
 
 const files = {
@@ -23,6 +25,20 @@ const files = {
 			'numAutorisation',
 			{ name: 'titulaires', type: 'array', sep: ';' },
 			{ name: 'surveillance', type: 'bool', deserializer: e => e === 'Oui' }
+		]
+	},
+	'CIS': {
+		name: "Fichier des spécialités + code de document",
+		description: "Fichier contenant toutes les spécialités du Répertoire des Spécialités Pharmaceutiques. Les champs d'information sont le code CIS, la dénomination de la spécialité pharmaceutique, la forme pharmaceutique, la ou les voies d'administration, le statut de l'AMM, le type de la procédure d'autorisation, l'état de commercialisation tel que déclaré par le titulaire de l'AMM et le code de document (RCP/Notice).",
+		headers: [
+			{ name: 'cis', type: 'string', pattern: /^\d{8}$/ },
+			'nom',
+			'formePharma',
+			{ name: 'voiesAdministration', type: 'array', sep: ';' },
+			'statutAMM',
+			'typeAMM',
+			'etatCommercialisation',
+			'codeDocument'
 		]
 	},
 	'CIS_CIP_bdpm': {
@@ -132,7 +148,8 @@ const creation_script = `
 		dateAMM TEXT,
 		statutBDM TEXT,
 		numAutorisation TEXT,
-		surveillance INTEGER
+		surveillance INTEGER,
+		codeDocument TEXT
 	);
 	CREATE INDEX CIS_bdpm_numAutorisation ON CIS_bdpm (numAutorisation);
 
@@ -215,8 +232,6 @@ const creation_script = `
 `
 async function main() {
 	try {
-		const db = await dbPromise;
-		await db.exec(creation_script)
 		const v = [
 			{
 				file: 'CIS_bdpm',
@@ -232,7 +247,6 @@ async function main() {
 					'numAutorisation',
 					'surveillance'
 				],
-				req: `INSERT INTO CIS_bdpm (cis, nom,formePharma,statutAMM,typeAMM,etatCommercialisation,dateAMM,statutBDM,numAutorisation,surveillance) VALUES (?,?,?,?,?,?,?,?,?,?);`
 			}, {
 				file: 'CIS_CIP_bdpm',
 				fields: [
@@ -247,7 +261,6 @@ async function main() {
 					'prix',
 					'indicationsRemboursement'
 				],
-				req: `INSERT INTO CIS_CIP_bdpm (cis,cip7,cip13,libelle,statutAdministratif,etatCommercialisation,dateDeclaration,agrementCollectivites,prix,indicationsRemboursement) VALUES (?,?,?,?,?,?,?,?,?,?);`
 			},
 			{
 				file: 'CIS_COMPO_bdpm',
@@ -302,14 +315,28 @@ async function main() {
 					'cis',
 					'conditions'
 				]
+			}, {
+				file: 'CIS',
+				update: 'CIS_bdpm',
+				query: 'UPDATE CIS_bdpm SET codeDocument = ? WHERE cis = ?;',
+				condition: doc => doc.codeDocument
 			}
 		]
-		v.forEach(async ({ file, req, fields }) => {
+		const p = v.map(async ({ file, req, fields, update, query, condition }) => {
 			console.log(`Loading ${file} ...`);
 			const filename = path.join(__dirname, 'bdpm', file + '.txt');
 			try {
 				const res = await converter(filename, files[file].headers, doc => {
+					if (update && query && (!condition || condition(doc))) {
+						return query.replace(/(([^ ]+) *= *)\?/g, (substr, ...vals) => {
+							return vals[0] + mapValue(vals[1]);
+						})
+					}
+					else if (!fields) return null;
 					const vals = [];
+					return `INSERT INTO ${file} (${fields.join(',')}) VALUES (${fields.map(mapValue).join(',')});`;
+
+
 					function mapValue(h) {
 						let v = doc[h];
 						if (typeof v === "object")
@@ -320,13 +347,18 @@ async function main() {
 						else if (typeof v === 'string') return `'${v.replace(/'/g, '\'\'')}'`;
 						else return v
 					}
-					return `INSERT INTO ${file} (${fields.join(',')}) VALUES (${fields.map(mapValue).join(',')});`;
 				});
-				await db.exec(res);
+				return res;
 			} catch (e) {
 				console.error(`Erreur sur le fichier ${file} (${files[file].name}): `, e);
 			}
-		})
+		});
+
+		const sql = creation_script + '\n' + (await Promise.all(p)).join('\n');
+		await writefile(creation_sql_file, sql);
+
+		const db = await dbPromise;
+		await db.exec(sql);
 	} catch (e) {
 		console.error(e);
 	}

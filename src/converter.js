@@ -86,11 +86,11 @@ module.exports = async function (file_name, headers, getRequest) {
 		lineReader.on('close', async () => {
 			try {
 				data.push('COMMIT;')
-				const sql = data.join('\n');
-				// await Promise.all(
-				fs.writeFileSync(file_name + '.json', JSON.stringify(json, null, 2));
-				fs.writeFileSync(file_name + '.sql', sql)
-				// )
+				const sql = data.filter(d => !!d).join('\n');
+				await Promise.all([
+					writeFile(file_name + '.json', JSON.stringify(json, null, 2)),
+					writeFile(file_name + '.sql', sql)
+				]);
 				res(sql)
 
 			} catch (e) {
