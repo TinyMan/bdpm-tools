@@ -1,12 +1,16 @@
 const converter = require('./src/converter');
 const path = require('path');
+const download = require('download');
 
 const sqlite = require('sqlite');
-const writefile = require('util').promisify(require('fs').writeFile)
+const fs = require('fs')
+const { promisify } = require('util')
+const writefile = promisify(fs.writeFile)
+const mkdir = promisify(fs.mkdir);
 
-const dbPromise = sqlite.open('./bdpm/bdpm.sqlite');
-const creation_sql_file = path.join('bdpm', 'bdpm.sql');
-
+const bdpm_folder = 'bdpm';
+const dbPromise = sqlite.open(`./${bdpm_folder}/bdpm.sqlite`);
+const creation_sql_file = path.join(bdpm_folder, 'bdpm.sql');
 
 const files = {
 	'CIS_bdpm': {
@@ -39,7 +43,8 @@ const files = {
 			'typeAMM',
 			'etatCommercialisation',
 			'codeDocument'
-		]
+		],
+		url: 'http://agence-prd.ansm.sante.fr/php/ecodex/telecharger/lirecis.php'
 	},
 	'CIS_CIP_bdpm': {
 		name: 'Fichier des présentations',
@@ -230,133 +235,147 @@ const creation_script = `
 	);
 	COMMIT;
 `
+const json_formats = [
+	{
+		file: 'CIS_bdpm',
+		fields: [
+			'cis',
+			'nom',
+			'formePharma',
+			'statutAMM',
+			'typeAMM',
+			'etatCommercialisation',
+			'dateAMM',
+			'statutBDM',
+			'numAutorisation',
+			'surveillance'
+		],
+	}, {
+		file: 'CIS_CIP_bdpm',
+		fields: [
+			'cis',
+			'cip7',
+			'cip13',
+			'libelle',
+			'statutAdministratif',
+			'etatCommercialisation',
+			'dateDeclaration',
+			'agrementCollectivites',
+			'prix',
+			'indicationsRemboursement'
+		],
+	},
+	{
+		file: 'CIS_COMPO_bdpm',
+		fields: [
+			'cis',
+			'designation',
+			'codeSubstance',
+			'nomSubstance',
+			'dosageSubstance',
+			'refDosage',
+			'nature',
+			'numLiaison'
+		]
+	}, {
+		file: 'CIS_HAS_SMR_bdpm',
+		fields: [
+			'cis',
+			'codeHAS',
+			'motifEval',
+			'dateAvisCT',
+			'valeurSMR',
+			'libelleSMR',
+		]
+	}, {
+		file: 'CIS_HAS_ASMR_bdpm',
+		fields: [
+			'cis',
+			'codeHAS',
+			'motifEval',
+			'dateAvisCT',
+			'valeurASMR',
+			'libelleASMR',
+		]
+	}, {
+		file: 'HAS_LiensPageCT_bdpm',
+		fields: [
+			'codeHAS',
+			'lienAvisCT'
+		]
+	}, {
+		file: 'CIS_GENER_bdpm',
+		fields: [
+			'id',
+			'libelle',
+			'cis',
+			'typeGen',
+			'codeTri',
+		]
+	}, {
+		file: 'CIS_CPD_bdpm',
+		fields: [
+			'cis',
+			'conditions'
+		]
+	}, {
+		file: 'CIS',
+		update: 'CIS_bdpm',
+		query: 'UPDATE CIS_bdpm SET codeDocument = ? WHERE cis = ?;',
+		condition: doc => doc.codeDocument
+	}
+]
 async function main() {
 	try {
-		const v = [
-			{
-				file: 'CIS_bdpm',
-				fields: [
-					'cis',
-					'nom',
-					'formePharma',
-					'statutAMM',
-					'typeAMM',
-					'etatCommercialisation',
-					'dateAMM',
-					'statutBDM',
-					'numAutorisation',
-					'surveillance'
-				],
-			}, {
-				file: 'CIS_CIP_bdpm',
-				fields: [
-					'cis',
-					'cip7',
-					'cip13',
-					'libelle',
-					'statutAdministratif',
-					'etatCommercialisation',
-					'dateDeclaration',
-					'agrementCollectivites',
-					'prix',
-					'indicationsRemboursement'
-				],
-			},
-			{
-				file: 'CIS_COMPO_bdpm',
-				fields: [
-					'cis',
-					'designation',
-					'codeSubstance',
-					'nomSubstance',
-					'dosageSubstance',
-					'refDosage',
-					'nature',
-					'numLiaison'
-				]
-			}, {
-				file: 'CIS_HAS_SMR_bdpm',
-				fields: [
-					'cis',
-					'codeHAS',
-					'motifEval',
-					'dateAvisCT',
-					'valeurSMR',
-					'libelleSMR',
-				]
-			}, {
-				file: 'CIS_HAS_ASMR_bdpm',
-				fields: [
-					'cis',
-					'codeHAS',
-					'motifEval',
-					'dateAvisCT',
-					'valeurASMR',
-					'libelleASMR',
-				]
-			}, {
-				file: 'HAS_LiensPageCT_bdpm',
-				fields: [
-					'codeHAS',
-					'lienAvisCT'
-				]
-			}, {
-				file: 'CIS_GENER_bdpm',
-				fields: [
-					'id',
-					'libelle',
-					'cis',
-					'typeGen',
-					'codeTri',
-				]
-			}, {
-				file: 'CIS_CPD_bdpm',
-				fields: [
-					'cis',
-					'conditions'
-				]
-			}, {
-				file: 'CIS',
-				update: 'CIS_bdpm',
-				query: 'UPDATE CIS_bdpm SET codeDocument = ? WHERE cis = ?;',
-				condition: doc => doc.codeDocument
-			}
-		]
-		const p = v.map(async ({ file, req, fields, update, query, condition }) => {
-			console.log(`Loading ${file} ...`);
-			const filename = path.join(__dirname, 'bdpm', file + '.txt');
-			try {
-				const res = await converter(filename, files[file].headers, doc => {
-					if (update && query && (!condition || condition(doc))) {
-						return query.replace(/(([^ ]+) *= *)\?/g, (substr, ...vals) => {
-							return vals[0] + mapValue(vals[1]);
-						})
-					}
-					else if (!fields) return null;
-					const vals = [];
-					return `INSERT INTO ${file} (${fields.join(',')}) VALUES (${fields.map(mapValue).join(',')});`;
+		try {
+			await mkdir(path.join(__dirname, bdpm_folder));
+		} catch (e) {
+			if (e.code !== 'EEXIST') throw e;
+		}
+		const p = json_formats
+			.map(async a => {
+				console.log(`Downloading ${a.file} ...`)
+				const url = files[a.file].url || `http://base-donnees-publique.medicaments.gouv.fr/telechargement.php?fichier=${a.file}.txt`;
+				await download(url, path.join(__dirname, bdpm_folder), { filename: a.file + '.txt' });
+				return a;
+			})
+			.map(async p => {
+				const { file, req, fields, update, query, condition } = await p;
+				console.log(`Parsing ${file} ...`);
+				const filename = path.join(__dirname, bdpm_folder, file + '.txt');
+				try {
+					const res = await converter(filename, files[file].headers, doc => {
+						if (update && query && (!condition || condition(doc))) {
+							return query.replace(/(([^ ]+) *= *)\?/g, (substr, ...vals) => {
+								return vals[0] + mapValue(vals[1]);
+							})
+						}
+						else if (!fields) return null;
+						const vals = [];
+						return `INSERT INTO ${file} (${fields.join(',')}) VALUES (${fields.map(mapValue).join(',')});`;
 
 
-					function mapValue(h) {
-						let v = doc[h];
-						if (typeof v === "object")
-							v = v.toISOString();
-						else if (typeof v === 'boolean')
-							v = v ? 1 : 0;
-						if (!v) return 'NULL';
-						else if (typeof v === 'string') return `'${v.replace(/'/g, '\'\'')}'`;
-						else return v
-					}
-				});
-				return res;
-			} catch (e) {
-				console.error(`Erreur sur le fichier ${file} (${files[file].name}): `, e);
-			}
-		});
+						function mapValue(h) {
+							let v = doc[h];
+							if (typeof v === "object")
+								v = v.toISOString();
+							else if (typeof v === 'boolean')
+								v = v ? 1 : 0;
+							if (!v) return 'NULL';
+							else if (typeof v === 'string') return `'${v.replace(/'/g, '\'\'')}'`;
+							else return v
+						}
+					});
+					return res;
+				} catch (e) {
+					console.error(`Erreur sur le fichier ${file} (${files[file].name}): `, e);
+				}
+			});
 
 		const sql = creation_script + '\n' + (await Promise.all(p)).join('\n');
 		await writefile(creation_sql_file, sql);
 
+		console.log(`Creating database ...`)
 		const db = await dbPromise;
 		await db.exec(sql);
 	} catch (e) {

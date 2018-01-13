@@ -21,6 +21,7 @@
   "author": "TinyMan <raph.a.uzan@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "download": "^6.2.5",
     "iconv-lite": "^0.4.19",
     "moment": "^2.20.1",
     "sqlite": "^2.9.0"
