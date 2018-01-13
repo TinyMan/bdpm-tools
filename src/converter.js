@@ -32,7 +32,7 @@ function createRowObject(headers, values) {
 							break;
 						case 'array':
 							const sep = header.sep || ';';
-							val = values[index] && values[index].split(sep);
+							val = values[index] && values[index].split(sep).map(e => e ? e.trim() : e);
 							break;
 						case 'date':
 							val = moment(values[index], header.format);
