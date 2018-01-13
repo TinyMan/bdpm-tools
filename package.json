@@ -1,20 +1,25 @@
 {
-  "name": "node-bdpm",
+  "name": "bdpm-tools",
   "version": "0.0.1",
-  "description": "",
+  "description": "Toolset for the French BDPM (base de données public des médicaments)",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TinyMan/bdpm-tools.git"
   },
   "keywords": [
     "bdpm",
     "database",
     "french",
     "drug",
-    "medicaments"
+    "medicaments",
+    "toolset"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "TinyMan <raph.a.uzan@gmail.com>",
+  "license": "MIT",
   "dependencies": {
     "iconv-lite": "^0.4.19",
     "moment": "^2.20.1",
