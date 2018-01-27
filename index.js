@@ -182,7 +182,7 @@ const creation_script = `
 		designation TEXT,
 		codeSubstance INTEGER,
 		nomSubstance TEXT,
-		dosageSubstance TEXT,
+		dosageSubstance TEXT NOT NULL,
 		refDosage TEXT,
 		nature TEXT,
 		numLiaison INTEGER
@@ -363,8 +363,8 @@ async function main() {
 								v = v.toISOString();
 							else if (typeof v === 'boolean')
 								v = v ? 1 : 0;
-							if (!v) return 'NULL';
-							else if (typeof v === 'string') return `'${v.replace(/'/g, '\'\'')}'`;
+							if (typeof v === 'string') return `'${v.replace(/'/g, '\'\'')}'`;
+							else if (!v) return 'NULL';
 							else return v
 						}
 					});

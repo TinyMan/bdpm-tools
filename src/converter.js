@@ -17,7 +17,7 @@ function createRowObject(headers, values) {
 
 	headers.forEach((header, index) => {
 		if (typeof header === 'string')
-			rowObject[header] = values[index];
+			rowObject[header] = values[index] || '';
 		else {
 			let val;
 			if (header.map) val = header.map(values[index]);
@@ -29,6 +29,7 @@ function createRowObject(headers, values) {
 							if (val && header.pattern && !values[index].match(header.pattern))
 								throw new Error(`[${header.name}] String ${val} doesn\'t match pattern ${header.pattern}`);
 							else if (val) val = val.trim();
+							else val = '';
 							break;
 						case 'array':
 							const sep = header.sep || ';';
