@@ -125,7 +125,7 @@ const files = {
 		name: 'Fichier des conditions de prescription et de délivrance',
 		description: 'Il contient l\'ensemble des conditions de prescription et de délivrance associées à un médicament.',
 		headers: [
-			{ name: 'CIS', type: 'string', pattern: /^\d{8}$/ },
+			{ name: 'cis', type: 'string', pattern: /^\d{8}$/ },
 			'conditions'
 		]
 	},
@@ -231,7 +231,8 @@ const creation_script = `
 
 	DROP TABLE IF EXISTS CIS_CPD_bdpm;
 	CREATE TABLE CIS_CPD_bdpm (
-		cis TEXT PRIMARY KEY,
+		id INTEGER PRIMARY KEY,
+		cis TEXT,
 		conditions TEXT
 	);
 	COMMIT;
